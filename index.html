@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+
+<!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Robust Text-based Speech Editing in Noisy Contexts with Rectified Flow for Efficiency</title>
+<meta name="generator" content="Jekyll v3.9.0">
+<meta property="og:title" content="TODO: title">
+<meta property="og:locale" content="en_US">
+<link rel="canonical" href="https://leiyi420.github.io/CSEmoTransfer">
+<meta property="og:url" content="https://leiyi420.github.io/CSEmoTransfer">
+<meta name="twitter:card" content="summary">
+<!-- End Jekyll SEO tag -->
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body data-new-gr-c-s-check-loaded="14.1001.0" data-gr-ext-installed="">
+    <section class="page-header">
+    <h2 class="project-name">Robust Text-based Speech Editing in Noisy Contexts with Rectified Flow for Efficiency</h2>
+    <br>
+    <h2 class="project-tagline">
+      <center> Haowen Yin<sup>1</sup> Kai Wang<sup>1,2</sup> Hongli Yang<sup>1</sup>, Hao Huang<sup>1,2,3</sup>, and Wushour Silamu<sup>1,2,3</sup>  </center> 
+      <br>
+      <center> <sup>1</sup>School of Computer Science and Technology, Xinjiang University, Urumqi, China</center>
+      <center> <sup>2</sup>Xinjiang Key Laboratory of Multi-lingual Information Technology, Urumqi, China</center>
+      <center> <sup>3</sup>Joint International Research Laboratory of Silk Road Multilingual Cognitive Computing, Urumqi, China</center>
+    </h2>
+    </section>
+
+<section class="main-content">
+
+<h2>0. Contents</h2>
+<ul>
+  <li><a href="#abstract">Abstract</a></li>
+  <li><a href="#SA+">SA+</a></li>
+  <li><a href="#HiFi-GAN_and_NHV-GAN">HiFi-GAN and NHV-GAN</a></li>
+  <li><a href='#Speaker_Generation'>Speaker Generation</a></li>
+  <li><a href="#Separation_Demo">Separation Demo</a></li>
+</ul>
+
+<br>
+<h2 id="abstract">1. Abstract<a name="abstract"></a></h2>
+<p> 
+	Although text-based speech editing (TSE) has made significant progress for clean speech, achieving natural editing effects for noisy speech remains a significant challenge. Background noise degrades the quality of generated speech, and the edited speech fails to maintain noise context consistency. We propose Reflow-TSE, a robust and efficient TSE model for noise-consistent speech editing with limited sampling steps. For noise robustness, 1) we design a noise condition module to extract frame-level background noise sequences from noisy speech, and 2) we introduce an enhanced context-conditioned prediction module that predicts masked noise sequences along with conventional duration and pitch, using these conditions to guide generation. For boosting efficiency, 3) we introduce the rectified flow model, leveraging speech context and predicted conditions to achieve high-quality editing with limited sampling steps. Experimental results show that Reflow-TSE achieves context-consistent noisy speech editing with just 2-step sampling, a capability absent in other models. 
+</p>
+<center><img src='myfig/model.png'></center>
+<p style="text-align: justify; font-size:16px;font-color:#D5CFCF;margin-left: 20px;margin-right:20px ;margin-top: 10px;">
+	<center>Fig1:  The architecture of Reflow-TSE.</center>
+</p>
+
+<h2> 2. Baseline Models<a name="Baseline Models"></a></h2>
+<p>
+	(1)<strong>Ground Truth</strong>: The waveform reconstructed by the <a href="#hifigan">HiFiGAN<sup>[1]</sup></a> vocoder from ground truth Mel-spectrograms. <a href="https://github.com/jik876/hifi-gan">[code]</a><br>
+	(2)<a href="#A3T"><strong>A<sup>3</sup>T</strong><sup>[2]</sup></a>: A<sup>3</sup>T adopts an alignment-aware acoustic-text pretraining method, reconstructing high-quality spectrograms from partially masked inputs. <a href="https://github.com/richardbaihe/a3t">[code]</a><br>
+	(3)<a href="#fluentspeech"><strong>FluentSpeech</strong><sup>[3]</sup></a>: FluentSpeech introduces diffusion models into a context-aware mask prediction network, iteratively refining the edited Mel-spectrogram based on contextual features. <a href="https://github.com/Zain-Jiang/Speech-Editing-Toolkit">[code]</a><br>
+	(4)<a href="#fluenteditor"><strong>FluentEditor</strong><sup>[4]</sup></a>: FluentEditor further improves editing fluency by adding acoustic and prosodic consistency training to FluentSpeech. <a href="https://github.com/Ai-S2-Lab/FluentEditor">[code]</a><br>
+	(5)<strong>FluentSpeech-N</strong>: FluentSpeech with added noise condition module and masked noise predictor, but without the rectified flow decoder.<br>
+	(6)<strong>Mix Method</strong>: This approach first generates clean speech using Reflow-TSE, then resamples the noise waveform extracted by the noise extractor to match the speech length, and finally combines the clean speech with the noise.
+</p>
+<!--<br><br>-->
+
+<h2> 3. Noisy Speech<a name="Noisy Speech"></a></h2>
+<p>
+	Demos of insertion and replacement operations on noisy speech using Reflow-TSE and other baseline models.
+</p>
+<table>
+	<thead>Insertion Operation</thead>
+	<tbody>
+		<tr>
+			<td style="text-align: left" colspan=8>
+				Original text: It is very unfair, and something should be done.<br>
+				Edited text: It is very unfair <strong>for ours</strong>, and something should be done.
+			</td> 
+		</tr>
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+			<th style="text-align: center"><strong>Mix Method</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_reflowTSE-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_fluentspeech-N.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p316_051_addnoise_noisy_insert_mix.wav" controls="" preload=""></audio></td>
+		</tr>
+		<tr>
+            <td style="text-align: left" colspan=8>
+				Original text: It is believed the size of the settlement has not been finalised.<br>
+				Edited text: It is believed the size of the <strong>financial</strong> settlement has not been finalised.
+			</td>
+      	</tr>  
+    	<tr>
+	      	<th style="text-align: center"><strong>Ground Truth</strong></th>
+			<th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+			<th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+			<th style="text-align: center"><strong>Mix Method</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_reflowTSE-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_fluentspeech-N.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_mix.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<tr>
+			<td style="text-align: left" colspan=8>
+				Original text: In fact, they have the opposite effect.<br>
+				Edited text: In fact, they <strong>often</strong> have the opposite effect.
+			</td> 
+		</tr>
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+			<th style="text-align: center"><strong>Mix Method</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p249_316_addnoise_noisy_insert_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/insert_noisy/p249_316_addnoise_noisy_insert_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p249_316_addnoise_noisy_insert_reflowTSE-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_noisy/p249_316_addnoise_noisy_insert_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p249_316_addnoise_noisy_insert_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p236_262_addnoise_noisy_insert_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p249_316_addnoise_noisy_insert_fluentspeech-N.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_noisy/p249_316_addnoise_noisy_insert_mix.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+	</tbody>
+</table><br>
+
+<table>
+	<thead>Replacement Operation</thead>
+	<tbody>
+		<tr>
+			<td style="text-align: left" colspan=8>
+				Original text: The Chancellor will deal from a position of strength.<br>
+				Edited text: The <strong>premier</strong> will deal from a position of strength.
+			</td> 
+		</tr> 
+    	<tr>
+	      	<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+			<th style="text-align: center"><strong>Mix Method</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_reflowTSE-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_fluentspeech-N.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p243_137_addnoise_noisy_mix.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<tr>
+			<td style="text-align: left" colspan=8>
+				Original text: The rainbow is a division of white light into many beautiful colors.<br>
+				Edited text: The rainbow is a division of white light into many <strong>different</strong> colors.
+			</td> 
+		</tr> 
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+			<th style="text-align: center"><strong>Mix Method</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_reflowTSE-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_fluentspeech-N.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p329_007_addnoise_noisy_mix.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<tr>
+			<td style="text-align: left" colspan=8>
+				Original text: It is still too early for any likely contenders to have emerged.<br>
+				Edited text: It is still too early for any likely <strong>competitors</strong> to have emerged.
+			</td> 
+		</tr>  
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+			<th style="text-align: center"><strong>Mix Method</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_reflowTSE-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_fluentspeech.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_fluentspeech-N.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_noisy/p249_128_addnoise_noisy_mix.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+	</tbody>
+</table>
+
+
+<h2> 4. Clean Speech<a name="Clean Speech"></a></h2>
+<p>
+	Demos of insertion and replacement operations on clean speech using Reflow-TSE and other baseline models.
+</p>
+<table>
+	<thead>Insertion Operation</thead>
+	<tbody>
+		<td style="text-align: left" colspan=7>
+			Original text: That proved enough to settle the home side down.<br>
+			Edited text: That proved <strong>barely</strong> enough to settle the home side down.
+		</td>   
+    	<tr>
+	      	<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p238_236_clean_insert_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/insert_clean/p238_236_clean_insert_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p238_236_clean_insert_reflow-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p238_236_clean_insert_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p238_236_clean_insert_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p238_236_clean_insert_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p238_236_clean_insert_fluentspeech-N.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<td style="text-align: left" colspan=8>
+			Original text: You can cope with it.<br>
+			Edited text: You can <strong>not</strong> cope with it.
+		</td>  
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p292_420_clean_insert_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/insert_clean/p292_420_clean_insert_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p292_420_clean_insert_reflow-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p292_420_clean_insert_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p292_420_clean_insert_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p292_420_clean_insert_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p292_420_clean_insert_fluentspeech-N.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<td style="text-align: left" colspan=8>
+			Original text: The Norsemen considered the rainbow as a bridge over which the gods passed from earth to their home in the sky.<br>
+			Edited text: The Norsemen considered the <strong>beautiful and colorful</strong> rainbow as a bridge over which the gods passed from earth to their home in the sky.
+		</td>  
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p243_016_clean_insert_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/insert_clean/p243_016_clean_insert_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p243_016_clean_insert_reflow-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/insert_clean/p243_016_clean_insert_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p243_016_clean_insert_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p243_016_clean_insert_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/insert_clean/p243_016_clean_insert_fluentspeech-N.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+	</tbody>
+</table><br>
+
+<table>
+	<thead>Replacement Operation</thead>
+	<tbody>
+		<td style="text-align: left" colspan=7>
+			Original text: It is believed the size of the settlement has not been finalised.<br>
+			Edited text: It is believed the size of the <strong>transaction</strong> has not been finalised.
+		</td>   
+    	<tr>
+	      	<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p236_262_clean_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/replace_clean/p236_262_clean_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p236_262_clean_reflow-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p236_262_clean_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p236_262_clean_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p236_262_clean_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p236_262_clean_fluentspeech-N.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<td style="text-align: left" colspan=8>
+			Original text: It does affect the staff and the prisoners.<br>
+			Edited text: It does affect the <strong>jailer</strong> and the prisoners.
+		</td>  
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p292_330_clean_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/replace_clean/p292_330_clean_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p292_330_clean_reflow-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p292_330_clean_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p292_330_clean_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p292_330_clean_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p292_330_clean_fluentspeech-N.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<td style="text-align: left" colspan=8>
+			Original text: But this relative success has not been easy.<br>
+			Edited text: But this <strong>limited victory</strong> has not been easy.
+		</td>  
+    	<tr>
+			<th style="text-align: center"><strong>Ground Truth</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 2-steps</strong></th>
+	        <th style="text-align: center"><strong>Reflow-TSE 8-steps</strong></th>
+	        <th style="text-align: center"><strong>A<sup>3</sup>T</strong></th>
+	        <th style="text-align: center"><strong>FluentSpeech</strong></th>
+			<th style="text-align: center"><strong>FluentEditor</strong></th>
+			<th style="text-align: center"><strong>FluentSpeech-N</strong></th>
+	    </tr>
+		<tr>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p336_361_clean_gt.wav" controls="" preload=""></audio></td>
+	        <td style="text-align: left"><audio src="mysamples/replace_clean/p336_361_clean_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p336_361_clean_reflow-8steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/replace_clean/p336_361_clean_a3t.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p336_361_clean_fluentspeech.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p336_361_clean_fluenteditor.wav" controls="" preload=""></audio></td>
+			<td style="text-align: left"><audio src="mysamples/replace_clean/p336_361_clean_fluentspeech-N.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+	</tbody>
+</table>
+
+<h2> 5. Ablation Study of Reflow-TSE<a name="Ablation Study"></a></h2>
+<p>
+	Two sets of ablation experiments were designed: the complete Reflow-TSE was compared with models that removed noise modeling and models that removed flow rectification, respectively.
+</p>
+<table>
+	<thead>Without Flow Rectification</thead>
+	<tbody>
+		<tr>
+            <td style="text-align: left" colspan=2>These take the shape of a long round arch, <strong>with its path high above</strong>, and its two ends apparently beyond the horizon.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Flow Rectification</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/noisy/p228_008_addnoise_noisy_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/noisy/p228_008_addnoise_noisy_wo_reflow.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<tr>
+            <td style="text-align: left" colspan=2>That proved enough to <strong>settle the home side</strong> down.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Flow Rectification</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/noisy/p238_236_addnoise_noisy_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/noisy/p238_236_addnoise_noisy_wo_reflow.wav" controls="" preload=""></audio></td>
+		</tr>
+		<tr>
+            <td style="text-align: left" colspan=2><strong>The talks were announced yesterday</strong> by Brian Wilson, the foreign office minister.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Flow Rectification</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/clean/p233_075_clean_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/clean/p233_075_clean_wo_reflow.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<tr>
+            <td style="text-align: left" colspan=2><strong>That kind of growth</strong> is the important thing.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Flow Rectification</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/clean/p243_083_clean_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_reflow/clean/p243_083_clean_wo_reflow.wav" controls="" preload=""></audio></td>
+		</tr>
+	</tbody>
+</table><br>
+<table>
+	<thead>Without Noise Modeling</thead>
+	<tbody>
+		<tr>
+            <td style="text-align: left" colspan=2>Everything is now <strong>in place for Manchester</strong>.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Noise Modeling</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/noisy/p236_373_addnoise_noisy_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/noisy/p236_373_addnoise_wo_noise_model.wav" controls="" preload=""></audio></td>
+		</tr>
+		
+		<tr>
+            <td style="text-align: left" colspan=2>And they haven't taken <strong>the foot off the gas</strong>.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Noise Modeling</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/noisy/p286_231_addnoise_noisy_reflowTSE-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/noisy/p286_231_addnoise_wo_noise_model.wav" controls="" preload=""></audio></td>
+		</tr>
+		<tr>
+            <td style="text-align: left" colspan=2><strong>They do not work for</strong> Glasgow City Council.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Noise Modeling</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/clean/p228_077_clean_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/clean/p228_077_wo_noise_model.wav" controls="" preload=""></audio></td>
+		</tr>
+		<tr>
+            <td style="text-align: left" colspan=2><strong>A tribunal would then consider the</strong>> seriousness of the incident.</td>
+      	</tr> 
+    	<tr>
+	        <th style="text-align: center"><strong>Reflow-TSE</strong></th>
+	        <th style="text-align: center"><strong>w/o Noise Modeling</strong></th>
+	    </tr>
+		<tr>
+	        <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/clean/p249_289_clean_reflow-2steps.wav" controls="" preload=""></audio></td>
+            <td style="text-align: left"><audio src="mysamples/Ablation_wo_noise_modeling/clean/p249_289_wo_noise_model.wav" controls="" preload=""></audio></td>
+		</tr>
+	</tbody>
+</table>
+
+
+  <br>
+  <hr>
+  <p style="font-size:16px;font-color:#D5CFCF;">
+	<a name="A3T">
+		[1] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial networks for efficient and high fidelity speech synthesis,” in Advances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 6-12, 2020, virtual, 2020.
+  	</a>
+  	<br />
+	<a name="A3T">
+		[2] H. Bai, R. Zheng, J. Chen, M. Ma, X. Li, and L. Huang, “A3T: Alignment-aware acoustic and text pretraining for speech synthesis and editing,” in International Conference on Machine Learning, ICML 2022, 17-23 July 2022, Baltimore, Maryland, USA, ser. Proceedings of Machine Learning Research, vol. 162. PMLR, 2022, pp. 1399–1411.
+  	</a>
+  	<br />
+	  <a name="fluentspeech">
+		[3] Z. Jiang, Q. Yang, J. Zuo, Z. Ye, R. Huang, Y. Ren, and Z. Zhao, “Fluentspeech: Stutter-oriented automatic speech editing with context-aware diffusion models,” in Findings of the Association for Computational Linguistics: ACL 2023, Toronto, Canada, July 9-14, 2023. Association for Computational Linguistics, 2023, pp. 11 655–11 671.
+  	</a>
+	<br />
+	<a name="fluenteditor">
+		[4] R. Liu, J. Xi, Z. Jiang, and H. Li, “Fluenteditor: Text-based speech editing by considering acoustic and prosody consistency,” in Interspeech 2024, 2024, pp. 3435–3439.
+	</a>
+  </p>
+  <hr>
+      <footer class="site-footer">
+            <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com/">GitHub Pages</a>.</span>
+      </footer>
+    </section>
+</body></html>
+
