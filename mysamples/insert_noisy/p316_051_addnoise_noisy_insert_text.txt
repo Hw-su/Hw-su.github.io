@@ -1,0 +1,2 @@
+Original text: It is very unfair, and something should be done.
+Edited text: It is very unfair for ours, and something should be done.
